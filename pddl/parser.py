@@ -230,7 +230,7 @@ class DomainDef(Visitable):
     """This class represents the AST node for a pddl domain."""
 
     def __init__(self, name, requirements=None, types=None, predicates=None,
-                 actions=None, constants=None):
+                 actions=None, constants=None, durative_actions=None):
         """ Construct a new Domain AST node.
 
         Keyword arguments:
@@ -249,6 +249,11 @@ class DomainDef(Visitable):
             self.actions = []
         else:
             self.actions = actions  # a list of ActionStmt
+        if durative_actions == None:
+            self.durative_actions = []
+        else:
+            self.durative_actions = durative_actions  # a list of DurativeActionStmt
+
         self.constants = constants
 
 
@@ -615,6 +620,25 @@ def parse_action_stmt(iter):
     return ActionStmt(name, param, pre, eff)
 
 
+def parse_durative_action_stmt(iter):
+    """
+    Parse a durative-action definition which consists of a name, parameters, duration,
+    condition and an effect.
+
+    Returns an DurativeActionStmt instance.
+    """
+    # each action begins with a name
+    if not iter.try_match(':durative-action'):
+        raise ValueError('Error: durative-action must start with ":durative-action" keyword!')
+    name = parse_name(iter, 'durative-action')
+    # call parsers to parse parameters, precondition, effect
+    param = parse_parameters(iter)
+    duration = parse_duration_stmt(iter)
+    condition = parse_durative_condition_stmt(iter)
+    eff = parse_durative_effect_stmt(iter)
+    return DurativeActionStmt(name, param, pre, eff)
+
+
 def parse_predicates_stmt(iter):
     """
     Parse a PredicatesStmt which is essentially a list of predicates preceded
@@ -661,6 +685,9 @@ def parse_domain_def(iter):
         elif key.name == 'action':
             action = parse_action_stmt(next_iter)
             domain.actions.append(action)
+        elif key.name == 'durative-action':
+            durative_action = parse_durative_action_stmt(next_iter)
+            domain.durative_actions.append(durative_action)
             # from this point on only actions are allowed to follow
             break
         else:
